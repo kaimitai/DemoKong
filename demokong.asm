@@ -12,23 +12,37 @@ mov al,13h  ; 320x200 - 256 color mode
 int 10h 	; set video mode
 ;;;;;;;;;;;;;;;;;;
 
- call ClearBuffer
- call TestBuffer
+call TestBuffer2
+  
+ mov ax,50
+ mov bx,50
  
- mov bx,0
- mov al,5
+ lol:
+ push ax
+ push bx
  
- mov dx,0
- mov ah,5
+ call BlitWrap
+ 
+  mov ah, 0bh
+  int 21h
+  cmp al, 0
+  jne  Terminate
+  
+ pop bx
+ pop ax
+ 
+ inc ax
+ ;inc bx
+ cmp bx,200
+ jne noob
+ mov bx,50
+ noob:
+ cmp ax,320
+ jne lol
+ mov ax,50
+ jmp lol
 
- mov cx,120
- 
- call BlitLine
- 
- 
-;;;;;;;;;;;;;;;;;;
-mov ah,00       ;  Function To Read Character
-int 16h
+Terminate:
     
 mov ax,03h 
 int 10h 
@@ -38,6 +52,140 @@ mov al,00
 int 21h
 	
 ret
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;	Blits the screen buffer to visible video memory centered on (ax, bx) ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	BlitWrap:
+	; draw upper left quadrant
+	push ax
+	push bx
+	
+	mov cx,320
+	sub cx,ax	; cx is width
+	
+	mov dx,200
+	sub dx,bx
+	mov si,dx	; si is height
+	
+	xor dx,dx
+	
+;	call BlitRect
+
+	pop bx
+	pop ax
+	
+	; draw lower right quadrant
+	push ax
+	push bx
+	
+	mov cx,ax	; cx is width
+	mov si,bx	; si is height
+	
+	mov dx,320
+	sub dx,ax
+	
+	mov ah,200
+	sub ah,bl
+	
+	xor bx,bx
+	xor al,al
+	
+	call BlitRect
+	
+	pop bx
+	pop ax
+	
+	; draw upper right quadrant
+	push ax
+	push bx
+	
+	mov cx,200
+	sub cx,bx
+	mov si,cx	; si is height
+	
+	xor ah,ah	; target y is 0
+	
+	mov cx,ax	; cx is width
+	
+	mov dx,320
+	sub dx,ax	; target x-value is 320-x-value
+	
+	mov al,bl
+	
+	xor bx,bx	; source x-value is 0
+	
+;	call BlitRect
+	
+	pop bx
+	pop ax
+	
+	; draw lower left quadrant 
+	push ax
+	push bx
+
+	mov cx,200
+	sub cx,bx
+	mov si,cx	; height is 200-y
+	
+	mov cx,ax	; width is x
+	
+	mov dl,bl
+	
+	mov bx,320
+	sub bx,ax	; source x is 320-x
+
+	mov ah,dl
+	
+	xor al,al	; source y is 0
+	
+	xor dx,dx	; target x is 0
+
+	
+	call BlitRect
+	
+	pop bx
+	pop ax
+	
+	ret
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Blits a rectangle from the buffer to video memory	;;
+;;														;;
+;; bx: source x-value									;;
+;; al: source y-value									;;
+;; cx: length											;;
+;; si: height											;;
+;;														;;
+;; dx: target x-value									;;
+;; ah: target y-value									;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	BlitRect:
+				
+		cmp si,0
+		je BR_Done
+		
+		BR_NextLine:
+			push ax
+			push bx
+			push cx
+			push dx
+			push si
+			call BlitLine
+			pop si
+			pop dx
+			pop cx
+			pop bx
+			pop ax
+			
+			inc al
+			inc ah
+			
+			dec si
+			cmp si,0
+			jne BR_NextLine
+		BR_Done:
+	ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Blits a line from the buffer to video memory
@@ -68,7 +216,7 @@ ret
 		mov es,ax	; es:di points to target location in memory
 		
 		mov ax,BufferSegment
-		mov ds, ax	; ds:si points to source location in memory
+		mov ds,ax	; ds:si points to source location in memory
 
 		rep movsb	; cx already containts length
 	ret
@@ -77,115 +225,78 @@ ret
 ;;	Blits the screen buffer to visible video memory	 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	Blit:
-	mov ax, BufferSegment
-	mov ds, ax
-	
-	xor si,si
-	
-	mov ax, VideoMemory
-	mov es,ax
-	
-	xor di,di
-	
-	mov cx,320*200/2
-	rep movsw
-	ret
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;	Blits the screen buffer to visible video memory, offset at (bx, dx) - wrapping aroud	 ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	BlitWrap:
-	; Blit top left quadrant of screen
-	
-	mov ax, VideoMemory
-	mov es,ax
-	
-	xor di,di	; es:di points to top left video memory
-	
+		mov ax, BufferSegment
+		mov ds, ax
 		
-	push bx
-	call Mult320	; bx now points to the offset to its line in video mem
-
-	mov ax,BufferSegment
-	mov ds, ax
-
-	add bx,dx
-	mov si,bx		; ds:si now points to the given first loc of the buffer
-	
-	mov bx,50
-	
-	mov ax,320
-	sub ax,dx		; ax holds the number of pixels to draw (320 minus x-offset)
-	;sub dx,ax		; dx holds the number of pixels to skip
-	
-	BW_Q1_Draw:
-		mov cx,ax
-	
-		rep movsb
+		xor si,si
 		
-		add si,dx
-		add di,dx
-		dec bx
-		cmp bx,0
-		jne BW_Q1_Draw
-
-	pop bx
-
+		mov ax, VideoMemory
+		mov es,ax
+		
+		xor di,di
+		
+		mov cx,320*200/2
+		rep movsw
 	ret
 	
-	; End blit top left quadrant
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;	Clears video buffer (sets all black)	 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	ClearBuffer:
 	
-	mov ax,BufferSegment
-	mov es,ax		;ES points to the video buffer
-	xor di,di		;DI pointer in the video buffer
-	
-	mov al,0
-	mov cx,320*200/2
-	rep stosw
+		mov ax,BufferSegment
+		mov es,ax		;ES points to the video buffer
+		xor di,di		;DI pointer in the video buffer
+		
+		mov al,0
+		mov cx,320*200/2
+		rep stosw
 	
 	ret
-	
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;	Test procedure to draw lines to video buffer	 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	TestBuffer:
-	mov ax,BufferSegment
-	mov es,ax		;ES points to the video buffer
-	xor di,di		;DI pointer in the video buffer
- 
-	mov bl,0
- 
-	DrawLine:
-		mov cx,320
-		mov al,bl
-		rep stosb	; fill the line (320 pixels)
-		inc bl		; increase the color
-		cmp bl,200
-	jne DrawLine
+	TestBuffer2:
+		mov ax,BufferSegment
+		mov es,ax		;ES points to the video buffer
+		xor di,di		;DI pointer in the video buffer
+	 
+		mov bl,0
+	 
+		DrawLine2:
+			mov cx,320
+			mov al,bl
+			NPixel2:
+			stosb	; fill the line (320 pixels)
+			dec cx
+			inc al
+			inc al
+			inc al
+			cmp cx,0
+			jne NPixel2
+			inc bl		; increase the color
+			cmp bl,200
+		jne DrawLine2
 	ret
 	
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; mult bx by 320 - Get offset to line on screen ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; multiply bx by 320 - Get offset to line on screen ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	Mult320:
-	push ax
-	push bx
-	
-	shl bx,7
-	mov ax,bx	; ax = bx*256
+		push ax
+		push bx
+		
+		shl bx,8
+		mov ax,bx	; ax = bx*256
 
-	pop bx
-	shl bx,4
-	add ax,bx	; ax = ax + bx*64 (=bx*(256+64) = bx*(320))
-	
-	mov bx,ax	; bx = bx*320
-	
-	pop ax
+		pop bx
+		shl bx,6
+		add ax,bx	; ax = ax + bx*64 (=bx*(256+64) = bx*(320))
+		
+		mov bx,ax	; bx = bx*320
+		
+		pop ax
 	ret
 
 end
