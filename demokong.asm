@@ -4,6 +4,7 @@
 
 VideoMemory		equ 0a000h	; segment for visible video memory
 BufferSegment	equ 0b000h	; segment for video buffer
+TransparentColor equ 0ffh
 
 org     100h
 
@@ -13,35 +14,35 @@ int 10h 	; set video mode
 ;;;;;;;;;;;;;;;;;;
 
 call TestBuffer2
-  
- mov ax,50
- mov bx,50
- 
- lol:
- push ax
- push bx
- 
- call BlitWrap
+	mov dx,00B0Bh
+call ClearBuffer
+
+	mov dx,100
+	mov bx,50
+	mov cx,0
+	call DrawSprite
+
+	mov dx,107
+	mov bx,50
+	mov cx,30
+	call DrawSprite
+
+	mov dx,114
+	mov bx,50
+	mov cx,60
+	call DrawSprite
+
+call Blit
+
+MainLoop:
  
   mov ah, 0bh
   int 21h
   cmp al, 0
   jne  Terminate
   
- pop bx
- pop ax
- 
- inc ax
- ;inc bx
- cmp bx,200
- jne noob
- mov bx,50
- noob:
- cmp ax,320
- jne lol
- mov ax,50
- jmp lol
-
+jmp MainLoop
+  
 Terminate:
     
 mov ax,03h 
@@ -243,12 +244,11 @@ ret
 ;;	Clears video buffer (sets all black)	 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	ClearBuffer:
-	
 		mov ax,BufferSegment
 		mov es,ax		;ES points to the video buffer
 		xor di,di		;DI pointer in the video buffer
 		
-		mov al,0
+		mov ax,dx
 		mov cx,320*200/2
 		rep stosw
 	
@@ -299,4 +299,70 @@ ret
 		pop ax
 	ret
 
+; DRAW SPRITE TEST FUNCTION
+;	x: dx
+;	y: bx
+;	sprite start address: cx
+	DrawSprite:
+
+	call Mult320
+	
+	mov di,bx
+	add di,dx
+	
+	mov ax,BufferSegment
+	mov es,ax
+	
+	mov ax,@data
+	mov ds,ax
+	mov si,OFFSET K
+	add si,cx
+	
+	mov dl,5
+	mov dh,6
+	
+	SpriteRow:
+	lodsb
+	cmp al,TransparentColor
+	je DrawSpriteSkipPixel
+	stosb
+	jmp DrawSpriteIncedDi
+		DrawSpriteSkipPixel:
+		inc di
+	DrawSpriteIncedDi:
+	dec dl
+	cmp dl,0
+	jne SpriteRow
+	mov dl,5
+	dec dh
+	cmp dh,0
+	je SpriteEnd
+	add di,315
+	jmp SpriteRow
+	
+	SpriteEnd:
+	
+	ret
+
+.data
+
+
+K		db 01,01,0ffh,0ffh,01
+		db 01,01,0ffh,01,0ffh
+		db 01,01,01,0ffh,0ffh
+		db 01,01,01,0ffh,0ffh
+		db 01,01,0ffh,01,0ffh
+		db 01,01,0ffh,0ffh,01
+A		db 0ffh,04,04,04,0ffh
+		db 04,04,0ffh,04,4
+		db 04,04,04,04,4
+		db 03,03,0ffh,03,3
+		db 04,04,0ffh,04,4
+		db 04,04,0ffh,04,4
+I		db 01,02,03,04,05
+		db 0ffh,01,02,03,0ffh
+		db 0ffh,0ffh,02,0ffh,0ffh
+		db 0ffh,0ffh,02,0ffh,0ffh
+		db 0ffh,01,02,03,0ffh
+		db 01,02,03,04,05
 end
