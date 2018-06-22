@@ -13,9 +13,9 @@ mov al,13h  ; 320x200 - 256 color mode
 int 10h 	; set video mode
 ;;;;;;;;;;;;;;;;;;
 
-call TestBuffer2
+call TestBuffer
 	mov dx,00B0Bh
-call ClearBuffer
+;call ClearBuffer
 
 	mov dx,100
 	mov bx,50
@@ -257,27 +257,50 @@ ret
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;	Test procedure to draw lines to video buffer	 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	TestBuffer2:
+	TestBuffer:
 		mov ax,BufferSegment
 		mov es,ax		;ES points to the video buffer
 		xor di,di		;DI pointer in the video buffer
 	 
-		mov bl,0
+		xor bx,bx
 	 
-		DrawLine2:
+		DrawLine:
 			mov cx,320
-			mov al,bl
-			NPixel2:
+
+			NPixel:
+
+			mov dx,cx
+			xor dx,bx
+			add dx,bx
+
+			Call Mod256
+			
+			mov al,dl
+			
 			stosb	; fill the line (320 pixels)
 			dec cx
-			inc al
-			inc al
-			inc al
+			
 			cmp cx,0
-			jne NPixel2
+			jne NPixel
 			inc bl		; increase the color
 			cmp bl,200
-		jne DrawLine2
+		jne DrawLine
+	ret
+
+;;;;;;;;;;;;;;;;;;;;;
+;; return dx % 256 ;;
+;;;;;;;;;;;;;;;;;;;;;
+	Mod256:
+	push cx
+	
+	mov cx,dx
+	shr dx,8	; div by 256, discarding remainder
+	shl dx,8	; mul by 256
+	
+	sub cx,dx
+	mov dx,cx	; bx = bx - 256*(bx/256)
+	
+	pop cx
 	ret
 	
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -365,4 +388,157 @@ I		db 01,02,03,04,05
 		db 0ffh,0ffh,02,0ffh,0ffh
 		db 0ffh,01,02,03,0ffh
 		db 01,02,03,04,05
+		
+FontM	db 00001110b,	; A
+		db 00010110b,
+		db 00100110b,
+		db 01100110b,
+		db 01100110b,
+		db 01111110b,
+		db 01100110b,
+		db 00000000b,
+
+		db 01111110b,	; B
+		db 01100110b,
+		db 01100110b,
+		db 01111100b,
+		db 01100110b,
+		db 01100110b,
+		db 01111110b,
+		db 00000000b,
+		
+		db 00011100b,	; C
+		db 00100110b,
+		db 01100110b,
+		db 01100000b,
+		db 01100110b,
+		db 01100100b,
+		db 00111000b,
+		db 00000000b,
+		
+		db 01111100b,	; D
+		db 01100110b,
+		db 01100110b,
+		db 01100110b,
+		db 01100110b,
+		db 01100100b,
+		db 01111000b,
+		db 00000000b,
+		
+		db 00011100b,	; E
+		db 00100110b,
+		db 01100000b,
+		db 01111000b,
+		db 01100000b,
+		db 01100100b,
+		db 00111000b,
+		db 00000000b,
+		
+		db 01111110b,	; F
+		db 01100110b,
+		db 01100000b,
+		db 01100000b,
+		db 01100000b,
+		db 01100000b,
+		db 01100000b,
+		db 00000000b,
+		
+		db 00011100b,	; G
+		db 00100110b,
+		db 01100000b,
+		db 01100110b,
+		db 01100110b,
+		db 01100100b,
+		db 00111000b,
+		db 00000000b,
+		
+		db 01100110b,	; H
+		db 01100110b,
+		db 01100110b,
+		db 01111110b,
+		db 01100110b,
+		db 01100110b,
+		db 01100110b,
+		db 00000000b,
+		
+		db 00111100b,	; I
+		db 00011000b,
+		db 00011000b,
+		db 00011000b,
+		db 00011000b,
+		db 00011000b,
+		db 00111100b,
+		db 00000000b,
+		
+		db 00001110b,	; J
+		db 00000110b,
+		db 00000110b,
+		db 00000110b,
+		db 00000110b,
+		db 01100100b,
+		db 00111000b,
+		db 00000000b,
+		
+		db 01100110b,	; K
+		db 01100110b,
+		db 01101100b,
+		db 01111000b,
+		db 01101100b,
+		db 01100110b,
+		db 01100110b,
+		db 00000000b,
+
+		db 01100000b,	; L
+		db 01100000b,
+		db 01100000b,
+		db 01100000b,
+		db 01100000b,
+		db 01100110b,
+		db 01111110b,
+		db 00000000b,
+
+		db 00010100b,	; M
+		db 00101010b,
+		db 01101011b,
+		db 01101011b,
+		db 01101011b,
+		db 01101011b,
+		db 01101011b,
+		db 00000000b,
+		
+		db 01100110b,	;N
+		db 01100110b,
+		db 01110110b,
+		db 01101110b,
+		db 01100110b,
+		db 01100110b,
+		db 01100110b,
+		db 00000000b,
+		
+		db 00011000b,	; O
+		db 00100100b,
+		db 01100110b,
+		db 01100110b,
+		db 01100110b,
+		db 00100100b,
+		db 00011000b,
+		db 00000000b,
+		
+		db 00111100b,	; P
+		db 01100110b,
+		db 01100110b,
+		db 01100110b,
+		db 01111100b,
+		db 01100000b,
+		db 01100000b,
+		db 00000000b,
+		
+		db ,	; Q
+		db ,
+		db ,
+		db ,
+		db ,
+		db ,
+		db ,
+		db ,
 end
